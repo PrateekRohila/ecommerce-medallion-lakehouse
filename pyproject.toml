@@ -1,0 +1,24 @@
+[project]
+name = "ecommerce-medallion-lakehouse"
+version = "1.0.0"
+description = "Medallion lakehouse pipeline for e-commerce orders on Apache Spark + Delta Lake"
+requires-python = ">=3.10"
+dependencies = ["pyspark>=3.5", "delta-spark>=3.2", "pyyaml>=6.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+shopstream = "shopstream.main:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"

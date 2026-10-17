@@ -1,0 +1,62 @@
+# ---------------------------------------------------------------------------
+# ShopStream Lakehouse - pipeline configuration
+#
+# Values at the top level are defaults. The block under `environments.<env>`
+# is deep-merged on top of them when the job runs with `--env <env>`.
+# Two environment variables override everything (handy in CI / containers):
+#   SHOPSTREAM_BASE_PATH       -> base_path
+#   SHOPSTREAM_STORAGE_FORMAT  -> storage_format  (delta | parquet)
+# ---------------------------------------------------------------------------
+app_name: shopstream-lakehouse
+base_path: ./data
+storage_format: delta          # delta in every real environment
+spark_master: null             # null = let spark-submit / Databricks decide
+
+layers:
+  landing: landing
+  bronze: lake/bronze
+  silver: lake/silver
+  gold: lake/gold
+  quarantine: lake/quarantine
+  audit: lake/_audit
+
+spark:
+  spark.sql.adaptive.enabled: "true"
+  spark.sql.adaptive.coalescePartitions.enabled: "true"
+  spark.sql.session.timeZone: UTC
+  spark.sql.sources.partitionOverwriteMode: dynamic
+  spark.ui.showConsoleProgress: "false"
+
+quality:
+  # Circuit breaker: fail the run if more than this share of a batch is rejected.
+  max_reject_ratio: 0.25
+
+business:
+  valid_order_statuses: [PLACED, SHIPPED, DELIVERED, CANCELLED, RETURNED]
+  cancelled_statuses: [CANCELLED, RETURNED]
+  valid_customer_tiers: [BRONZE, SILVER, GOLD, PLATINUM]
+  fx_rates_to_inr:
+    INR: 1.0
+    USD: 83.50
+    EUR: 90.20
+  # Customer value segments on lifetime net revenue (INR)
+  segment_thresholds_inr:
+    HIGH: 150000
+    MEDIUM: 50000
+
+environments:
+  local:                       # laptop without Delta jars / internet
+    storage_format: parquet
+    spark_master: local[*]
+    spark:
+      spark.sql.shuffle.partitions: "4"
+  dev:
+    spark_master: local[*]
+    spark:
+      spark.sql.shuffle.partitions: "8"
+  prod:
+    base_path: abfss://lakehouse@<storage-account>.dfs.core.windows.net
+    spark:
+      spark.sql.shuffle.partitions: "auto"
+      spark.databricks.delta.optimizeWrite.enabled: "true"
+      spark.databricks.delta.autoCompact.enabled: "true"
